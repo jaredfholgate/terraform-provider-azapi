@@ -24,11 +24,6 @@ terraform {
   }
 }
 
-provider "azurerm" {
-  features {
-  }
-}
-
 provider "azapi" {
   skip_provider_registration = false
 }
@@ -87,17 +82,29 @@ resource "azapi_resource" "virtualHub" {
   response_export_values    = ["*"]
 }
 
-resource "azurerm_firewall" "test" {
-  name                = var.resource_name
-  location            = azapi_resource.resourceGroup.location
-  resource_group_name = azapi_resource.resourceGroup.name
-  sku_name            = "AZFW_Hub"
-  sku_tier            = "Standard"
-
-  virtual_hub {
-    virtual_hub_id  = azapi_resource.virtualHub.id
-    public_ip_count = 1
+resource "azapi_resource" "firewall" {
+  type      = "Microsoft.Network/azureFirewalls@2023-11-01"
+  parent_id = azapi_resource.resourceGroup.id
+  name      = var.resource_name
+  location  = var.location
+  body = {
+    properties = {
+      sku = {
+        name = "AZFW_Hub"
+        tier = "Standard"
+      }
+      hubIPAddresses = {
+        publicIPs = {
+          count = 1
+        }
+      }
+      virtualHub = {
+        id = azapi_resource.virtualHub.id
+      }
+    }
   }
+  schema_validation_enabled = false
+  response_export_values    = ["*"]
 }
 
 resource "azapi_resource" "routingIntent" {
@@ -113,14 +120,14 @@ resource "azapi_resource" "routingIntent" {
           destinations = [
             "Internet"
           ]
-          nextHop = azurerm_firewall.test.id
+          nextHop = azapi_resource.firewall.id
         },
         {
           name = "PrivateTrafficPolicy"
           destinations = [
             "PrivateTraffic"
           ]
-          nextHop = azurerm_firewall.test.id
+          nextHop = azapi_resource.firewall.id
         }
       ]
     }

@@ -24,25 +24,29 @@ terraform {
 provider "azapi" {
 }
 
-provider "azurerm" {
-  features {}
-}
-
-resource "azurerm_resource_group" "example" {
+resource "azapi_resource" "resource_group" {
+  type     = "Microsoft.Resources/resourceGroups@2020-06-01"
   name     = "example-rg"
   location = "west europe"
 }
 
-resource "azurerm_automation_account" "example" {
-  name                = "example-account"
-  resource_group_name = azurerm_resource_group.example.name
-  location            = azurerm_resource_group.example.location
-  sku_name            = "Basic"
+resource "azapi_resource" "automation_account" {
+  type      = "Microsoft.Automation/automationAccounts@2021-06-22"
+  name      = "example-account"
+  parent_id = azapi_resource.resource_group.id
+  location  = azapi_resource.resource_group.location
+  body = {
+    properties = {
+      sku = {
+        name = "Basic"
+      }
+    }
+  }
 }
 
 data "azapi_resource_action" "example" {
   type                   = "Microsoft.Automation/automationAccounts@2021-06-22"
-  resource_id            = azurerm_automation_account.example.id
+  resource_id            = azapi_resource.automation_account.id
   action                 = "listKeys"
   response_export_values = ["*"]
 }

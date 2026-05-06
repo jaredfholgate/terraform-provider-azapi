@@ -687,46 +687,71 @@ terraform {
 provider "azapi" {
 }
 
-provider "azurerm" {
-  features {}
-}
-
-resource "azurerm_resource_group" "example" {
+resource "azapi_resource" "resource_group" {
+  type     = "Microsoft.Resources/resourceGroups@2020-06-01"
   name     = "example-rg"
   location = "west europe"
 }
 
-resource "azurerm_public_ip" "example" {
-  name                = "example-ip"
-  location            = azurerm_resource_group.example.location
-  resource_group_name = azurerm_resource_group.example.name
-  allocation_method   = "Static"
-}
-
-resource "azurerm_lb" "example" {
-  name                = "example-lb"
-  location            = azurerm_resource_group.example.location
-  resource_group_name = azurerm_resource_group.example.name
-
-  frontend_ip_configuration {
-    name                 = "PublicIPAddress"
-    public_ip_address_id = azurerm_public_ip.example.id
+resource "azapi_resource" "public_ip" {
+  type      = "Microsoft.Network/publicIPAddresses@2023-11-01"
+  name      = "example-ip"
+  parent_id = azapi_resource.resource_group.id
+  location  = azapi_resource.resource_group.location
+  body = {
+    sku = {
+      name = "Standard"
+    }
+    properties = {
+      publicIPAllocationMethod = "Static"
+    }
   }
 }
 
-resource "azurerm_lb_nat_rule" "example" {
-  resource_group_name            = azurerm_resource_group.example.name
-  loadbalancer_id                = azurerm_lb.example.id
-  name                           = "RDPAccess"
-  protocol                       = "Tcp"
-  frontend_port                  = 3389
-  backend_port                   = 3389
-  frontend_ip_configuration_name = "PublicIPAddress"
+resource "azapi_resource" "load_balancer" {
+  type      = "Microsoft.Network/loadBalancers@2021-03-01"
+  name      = "example-lb"
+  parent_id = azapi_resource.resource_group.id
+  location  = azapi_resource.resource_group.location
+  body = {
+    sku = {
+      name = "Standard"
+    }
+    properties = {
+      frontendIPConfigurations = [
+        {
+          name = "PublicIPAddress"
+          properties = {
+            publicIPAddress = {
+              id = azapi_resource.public_ip.id
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
+resource "azapi_resource" "lb_nat_rule" {
+  type      = "Microsoft.Network/loadBalancers/inboundNatRules@2021-03-01"
+  name      = "RDPAccess"
+  parent_id = azapi_resource.load_balancer.id
+  body = {
+    properties = {
+      frontendIPConfiguration = {
+        id = "${azapi_resource.load_balancer.id}/frontendIPConfigurations/PublicIPAddress"
+      }
+      protocol             = "Tcp"
+      frontendPort         = 3389
+      backendPort          = 3389
+      idleTimeoutInMinutes = 4
+    }
+  }
 }
 
 resource "azapi_update_resource" "example" {
   type        = "Microsoft.Network/loadBalancers@2021-03-01"
-  resource_id = azurerm_lb.example.id
+  resource_id = azapi_resource.load_balancer.id
 
   body = {
     properties = {
@@ -741,7 +766,7 @@ resource "azapi_update_resource" "example" {
   }
 
   depends_on = [
-    azurerm_lb_nat_rule.example,
+    azapi_resource.lb_nat_rule,
   ]
 }
 `,

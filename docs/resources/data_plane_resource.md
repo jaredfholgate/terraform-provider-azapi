@@ -25,18 +25,17 @@ terraform {
 provider "azapi" {
 }
 
-provider "azurerm" {
-  features {}
-}
+data "azapi_resource" "example" {
+  type      = "Microsoft.Synapse/workspaces@2021-06-01"
+  parent_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/example-rg"
+  name      = "example-workspace"
 
-data "azurerm_synapse_workspace" "example" {
-  name                = "example-workspace"
-  resource_group_name = azurerm_resource_group.example.name
+  response_export_values = ["properties.connectivityEndpoints.dev"]
 }
 
 resource "azapi_data_plane_resource" "dataset" {
   type      = "Microsoft.Synapse/workspaces/datasets@2020-12-01"
-  parent_id = trimprefix(data.azurerm_synapse_workspace.example.connectivity_endpoints.dev, "https://")
+  parent_id = trimprefix(data.azapi_resource.example.output.properties.connectivityEndpoints.dev, "https://")
   name      = "example-dataset"
   body = {
     properties = {

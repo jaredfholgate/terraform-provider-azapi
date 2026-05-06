@@ -1604,31 +1604,29 @@ terraform {
 provider "azapi" {
 }
 
-provider "azurerm" {
-  features {}
-}
-
-resource "azurerm_resource_group" "example" {
+resource "azapi_resource" "resource_group" {
+  type     = "Microsoft.Resources/resourceGroups@2020-06-01"
   name     = "example-rg"
   location = "west europe"
 }
 
-resource "azurerm_user_assigned_identity" "example" {
-  name                = "example"
-  resource_group_name = azurerm_resource_group.example.name
-  location            = azurerm_resource_group.example.location
+resource "azapi_resource" "user_assigned_identity" {
+  type      = "Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31"
+  name      = "example"
+  parent_id = azapi_resource.resource_group.id
+  location  = azapi_resource.resource_group.location
 }
 
 // manage a container registry resource
 resource "azapi_resource" "example" {
   type      = "Microsoft.ContainerRegistry/registries@2020-11-01-preview"
   name      = "registry1"
-  parent_id = azurerm_resource_group.example.id
+  parent_id = azapi_resource.resource_group.id
 
-  location = azurerm_resource_group.example.location
+  location = azapi_resource.resource_group.location
   identity {
     type         = "SystemAssigned, UserAssigned"
-    identity_ids = [azurerm_user_assigned_identity.example.id]
+    identity_ids = [azapi_resource.user_assigned_identity.id]
   }
 
   body = {

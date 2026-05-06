@@ -9,12 +9,6 @@ terraform {
 provider "azapi" {
   skip_provider_registration = false
 }
-
-provider "azurerm" {
-  features {
-  }
-}
-
 variable "resource_name" {
   type    = string
   default = "acctest0001"
@@ -79,12 +73,7 @@ resource "azapi_resource" "namespaces" {
   response_export_values    = ["*"]
 }
 
-data "azurerm_managed_api" "test" {
-  name     = "servicebus"
-  location = var.location
-
-  depends_on = [azapi_resource.workflows, azapi_resource.namespaces]
-}
+data "azapi_client_config" "current" {}
 
 resource "azapi_resource" "connection" {
   type      = "Microsoft.Web/connections@2016-06-01"
@@ -94,7 +83,7 @@ resource "azapi_resource" "connection" {
   body = {
     properties = {
       api = {
-        id = data.azurerm_managed_api.test.id
+        id = "/subscriptions/${data.azapi_client_config.current.subscription_id}/providers/Microsoft.Web/locations/${var.location}/managedApis/servicebus"
       }
       displayName = "Service Bus"
     }

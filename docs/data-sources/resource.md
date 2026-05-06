@@ -24,29 +24,35 @@ terraform {
 provider "azapi" {
 }
 
-provider "azurerm" {
-  features {}
-}
-
-resource "azurerm_resource_group" "example" {
+resource "azapi_resource" "resource_group" {
+  type     = "Microsoft.Resources/resourceGroups@2020-06-01"
   name     = "example-rg"
   location = "west europe"
 }
 
-resource "azurerm_container_registry" "example" {
-  name                = "example"
-  resource_group_name = azurerm_resource_group.example.name
-  location            = azurerm_resource_group.example.location
-  sku                 = "Premium"
-  admin_enabled       = false
+resource "azapi_resource" "container_registry" {
+  type      = "Microsoft.ContainerRegistry/registries@2020-11-01-preview"
+  name      = "example"
+  parent_id = azapi_resource.resource_group.id
+  location  = azapi_resource.resource_group.location
+  body = {
+    sku = {
+      name = "Premium"
+    }
+    properties = {
+      adminUserEnabled = false
+    }
+  }
 }
 
 data "azapi_resource" "example" {
   name      = "example"
-  parent_id = azurerm_resource_group.example.id
+  parent_id = azapi_resource.resource_group.id
   type      = "Microsoft.ContainerRegistry/registries@2020-11-01-preview"
 
   response_export_values = ["properties.loginServer", "properties.policies.quarantinePolicy.status"]
+
+  depends_on = [azapi_resource.container_registry]
 }
 
 // it will output "registry1.azurecr.io"
@@ -77,8 +83,8 @@ output "quarantine_policy" {
 	-> String length must be at least 1.
 - `parent_id` (String) The ID of the azure resource in which this resource is created. It supports different kinds of deployment scope for **top level** resources:
 
-	- resource group scope: `parent_id` should be the ID of a resource group, it's recommended to manage a resource group by azurerm_resource_group.
-	- management group scope: `parent_id` should be the ID of a management group, it's recommended to manage a management group by azurerm_management_group.
+	- resource group scope: `parent_id` should be the ID of a resource group.
+	- management group scope: `parent_id` should be the ID of a management group.
 	- extension scope: `parent_id` should be the ID of the resource you're adding the extension to.
 	- subscription scope: `parent_id` should be like \x60/subscriptions/00000000-0000-0000-0000-000000000000\x60
 	- tenant scope: `parent_id` should be /

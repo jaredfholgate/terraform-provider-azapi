@@ -72,7 +72,7 @@ resource "azapi_resource" "raiBlocklist" {
   name      = "${var.resource_name}-crb"
   body = {
     properties = {
-      description = "Acceptance test data new azurerm resource"
+      description = "Acceptance test data new azapi resource"
     }
   }
 }

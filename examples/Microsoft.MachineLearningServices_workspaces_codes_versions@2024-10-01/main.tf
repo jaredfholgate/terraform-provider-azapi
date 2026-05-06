@@ -3,14 +3,6 @@ terraform {
     azapi = {
       source = "Azure/azapi"
     }
-    azurerm = {
-      source = "hashicorp/azurerm"
-    }
-  }
-}
-
-provider "azurerm" {
-  features {
   }
 }
 
@@ -97,14 +89,6 @@ resource "azapi_resource" "container" {
       }
     }
   }
-}
-
-resource "azurerm_storage_blob" "example" {
-  name                   = "codes.py"
-  storage_account_name   = azapi_resource.storageAccount.name
-  storage_container_name = azapi_resource.container.name
-  type                   = "Block"
-  source                 = "/Users/luheng/go/playground/issues/icm/azapi_ml_code/output.md"
 }
 
 resource "azapi_resource" "component" {
@@ -205,6 +189,11 @@ data "azapi_resource_id" "code" {
   name      = "mycode"
 }
 
+// The code blob (codes.py) is expected to already exist at the configured codeUri,
+// i.e. uploaded to the `azapi_resource.container` storage container in the
+// `azapi_resource.storageAccount` storage account.
+// Upload the file to that container out-of-band (e.g., via `az storage blob upload`)
+// before creating this code version.
 resource "azapi_resource" "codeVersion" {
   type      = "Microsoft.MachineLearningServices/workspaces/codes/versions@2024-10-01"
   parent_id = data.azapi_resource_id.code.id
@@ -222,5 +211,4 @@ resource "azapi_resource" "codeVersion" {
       }
     }
   }
-  depends_on = [azurerm_storage_blob.example]
 }

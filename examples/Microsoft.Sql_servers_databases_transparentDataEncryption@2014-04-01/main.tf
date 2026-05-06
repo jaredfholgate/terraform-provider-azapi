@@ -3,17 +3,8 @@ terraform {
     azapi = {
       source = "Azure/azapi"
     }
-    azurerm = {
-      source = "hashicorp/azurerm"
-    }
   }
 }
-
-provider "azurerm" {
-  features {
-  }
-}
-
 provider "azapi" {
   skip_provider_registration = false
 }
@@ -34,7 +25,7 @@ variable "administrator_login_password" {
   sensitive   = true
 }
 
-data "azurerm_client_config" "current" {
+data "azapi_client_config" "current" {
 }
 
 resource "azapi_resource" "resourceGroup" {
@@ -64,7 +55,7 @@ resource "azapi_resource" "server" {
 
 data "azapi_resource_id" "publicMaintenanceConfiguration" {
   type      = "Microsoft.Maintenance/publicMaintenanceConfigurations@2023-04-01"
-  parent_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}"
+  parent_id = "/subscriptions/${data.azapi_client_config.current.subscription_id}"
   name      = "SQL_Default"
 }
 

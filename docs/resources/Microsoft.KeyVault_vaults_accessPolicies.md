@@ -21,17 +21,8 @@ terraform {
     azapi = {
       source = "Azure/azapi"
     }
-    azurerm = {
-      source = "hashicorp/azurerm"
-    }
   }
 }
-
-provider "azurerm" {
-  features {
-  }
-}
-
 provider "azapi" {
   skip_provider_registration = false
 }
@@ -46,7 +37,7 @@ variable "location" {
   default = "westeurope"
 }
 
-data "azurerm_client_config" "current" {
+data "azapi_client_config" "current" {
 }
 
 resource "azapi_resource" "resourceGroup" {
@@ -68,7 +59,7 @@ resource "azapi_resource" "vault" {
       }
       accessPolicies   = []
       enableSoftDelete = true
-      tenantId         = data.azurerm_client_config.current.tenant_id
+      tenantId         = data.azapi_client_config.current.tenant_id
     }
   }
   schema_validation_enabled = false
@@ -86,7 +77,7 @@ resource "azapi_resource_action" "put_accessPolicy" {
     properties = {
       accessPolicies = [
         {
-          objectId = data.azurerm_client_config.current.object_id
+          objectId = data.azapi_client_config.current.object_id
           permissions = {
             certificates = [
               "ManageContacts",
@@ -100,7 +91,7 @@ resource "azapi_resource_action" "put_accessPolicy" {
             storage = [
             ]
           }
-          tenantId = data.azurerm_client_config.current.tenant_id
+          tenantId = data.azapi_client_config.current.tenant_id
         },
       ]
     }

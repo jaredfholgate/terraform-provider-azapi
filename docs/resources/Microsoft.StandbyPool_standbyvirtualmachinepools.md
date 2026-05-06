@@ -28,10 +28,6 @@ provider "azapi" {
   skip_provider_registration = false
 }
 
-provider "azurerm" {
-  features {}
-}
-
 variable "resource_name" {
   type    = string
   default = "acctest0001"
@@ -207,40 +203,55 @@ resource "azapi_resource" "virtualMachineScaleSet" {
   response_export_values    = ["*"]
 }
 
-data "azurerm_subscription" "primary" {}
-
-data "azurerm_role_definition" "vm-contributor" {
-  name = "Virtual Machine Contributor"
-}
-
-data "azurerm_role_definition" "nw-contributor" {
-  name = "Network Contributor"
-}
-
-data "azurerm_role_definition" "mi-contributor" {
-  name = "Managed Identity Contributor"
-}
+data "azapi_client_config" "current" {}
 
 data "azuread_service_principal" "test" {
   display_name = "Standby Pool Resource Provider"
 }
 
-resource "azurerm_role_assignment" "vm-contributor" {
-  scope              = azapi_resource.resourceGroup.id
-  role_definition_id = "${data.azurerm_subscription.primary.id}${data.azurerm_role_definition.vm-contributor.id}"
-  principal_id       = data.azuread_service_principal.test.object_id
+locals {
+  vm_contributor_role_id = "/subscriptions/${data.azapi_client_config.current.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/9980e02c-c2be-4d73-94e8-173b1dc7cf3c"
+  nw_contributor_role_id = "/subscriptions/${data.azapi_client_config.current.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/4d97b98b-1d4f-4787-a291-c67834d212e7"
+  mi_contributor_role_id = "/subscriptions/${data.azapi_client_config.current.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/e40ec5ca-96e0-45a2-b4ff-59039f2c2b59"
 }
 
-resource "azurerm_role_assignment" "nw-contributor" {
-  scope              = azapi_resource.resourceGroup.id
-  role_definition_id = "${data.azurerm_subscription.primary.id}${data.azurerm_role_definition.nw-contributor.id}"
-  principal_id       = data.azuread_service_principal.test.object_id
+resource "azapi_resource" "vm-contributor" {
+  type      = "Microsoft.Authorization/roleAssignments@2022-04-01"
+  parent_id = azapi_resource.resourceGroup.id
+  name      = uuidv5("url", "${azapi_resource.resourceGroup.id}/roleAssignments/${data.azuread_service_principal.test.object_id}/9980e02c-c2be-4d73-94e8-173b1dc7cf3c")
+  body = {
+    properties = {
+      principalId      = data.azuread_service_principal.test.object_id
+      principalType    = "ServicePrincipal"
+      roleDefinitionId = local.vm_contributor_role_id
+    }
+  }
 }
 
-resource "azurerm_role_assignment" "mi-contributor" {
-  scope              = azapi_resource.resourceGroup.id
-  role_definition_id = "${data.azurerm_subscription.primary.id}${data.azurerm_role_definition.mi-contributor.id}"
-  principal_id       = data.azuread_service_principal.test.object_id
+resource "azapi_resource" "nw-contributor" {
+  type      = "Microsoft.Authorization/roleAssignments@2022-04-01"
+  parent_id = azapi_resource.resourceGroup.id
+  name      = uuidv5("url", "${azapi_resource.resourceGroup.id}/roleAssignments/${data.azuread_service_principal.test.object_id}/4d97b98b-1d4f-4787-a291-c67834d212e7")
+  body = {
+    properties = {
+      principalId      = data.azuread_service_principal.test.object_id
+      principalType    = "ServicePrincipal"
+      roleDefinitionId = local.nw_contributor_role_id
+    }
+  }
+}
+
+resource "azapi_resource" "mi-contributor" {
+  type      = "Microsoft.Authorization/roleAssignments@2022-04-01"
+  parent_id = azapi_resource.resourceGroup.id
+  name      = uuidv5("url", "${azapi_resource.resourceGroup.id}/roleAssignments/${data.azuread_service_principal.test.object_id}/e40ec5ca-96e0-45a2-b4ff-59039f2c2b59")
+  body = {
+    properties = {
+      principalId      = data.azuread_service_principal.test.object_id
+      principalType    = "ServicePrincipal"
+      roleDefinitionId = local.mi_contributor_role_id
+    }
+  }
 }
 
 resource "azapi_resource" "standbyVirtualMachinePool" {
@@ -264,9 +275,9 @@ resource "azapi_resource" "standbyVirtualMachinePool" {
   ignore_missing_property   = false
 
   depends_on = [
-    azurerm_role_assignment.vm-contributor,
-    azurerm_role_assignment.nw-contributor,
-    azurerm_role_assignment.mi-contributor,
+    azapi_resource.vm-contributor,
+    azapi_resource.nw-contributor,
+    azapi_resource.mi-contributor,
   ]
 }
 

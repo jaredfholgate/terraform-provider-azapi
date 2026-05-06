@@ -3,17 +3,8 @@ terraform {
     azapi = {
       source = "Azure/azapi"
     }
-    azurerm = {
-      source = "hashicorp/azurerm"
-    }
   }
 }
-
-provider "azurerm" {
-  features {
-  }
-}
-
 provider "azapi" {
   skip_provider_registration = false
 }
@@ -34,7 +25,7 @@ variable "service_principal_application_id" {
   sensitive   = false
 }
 
-data "azurerm_client_config" "current" {
+data "azapi_client_config" "current" {
 }
 
 resource "azapi_resource" "resourceGroup" {
@@ -76,8 +67,8 @@ resource "azapi_resource" "connection" {
       fieldDefinitionValues = {
         ApplicationId         = var.service_principal_application_id
         CertificateThumbprint = "AEB97B81A68E8988850972916A8B8B6CD8F39813\n"
-        SubscriptionId        = data.azurerm_client_config.current.subscription_id
-        TenantId              = data.azurerm_client_config.current.tenant_id
+        SubscriptionId        = data.azapi_client_config.current.subscription_id
+        TenantId              = data.azapi_client_config.current.tenant_id
       }
     }
   }

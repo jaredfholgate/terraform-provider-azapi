@@ -21,17 +21,8 @@ terraform {
     azapi = {
       source = "Azure/azapi"
     }
-    azurerm = {
-      source = "hashicorp/azurerm"
-    }
   }
 }
-
-provider "azurerm" {
-  features {
-  }
-}
-
 provider "azapi" {
   skip_provider_registration = false
 }
@@ -236,7 +227,6 @@ data "azapi_resource" "subnet" {
   parent_id = azapi_resource.virtualNetwork.id
   name      = var.resource_name
 }
-
 
 resource "azapi_resource" "instancePool" {
   type      = "Microsoft.Sql/instancePools@2022-05-01-preview"

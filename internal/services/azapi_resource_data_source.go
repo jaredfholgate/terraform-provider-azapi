@@ -349,29 +349,35 @@ terraform {
 provider "azapi" {
 }
 
-provider "azurerm" {
-  features {}
-}
-
-resource "azurerm_resource_group" "example" {
+resource "azapi_resource" "resource_group" {
+  type     = "Microsoft.Resources/resourceGroups@2020-06-01"
   name     = "example-rg"
   location = "west europe"
 }
 
-resource "azurerm_container_registry" "example" {
-  name                = "example"
-  resource_group_name = azurerm_resource_group.example.name
-  location            = azurerm_resource_group.example.location
-  sku                 = "Premium"
-  admin_enabled       = false
+resource "azapi_resource" "container_registry" {
+  type      = "Microsoft.ContainerRegistry/registries@2020-11-01-preview"
+  name      = "example"
+  parent_id = azapi_resource.resource_group.id
+  location  = azapi_resource.resource_group.location
+  body = {
+    sku = {
+      name = "Premium"
+    }
+    properties = {
+      adminUserEnabled = false
+    }
+  }
 }
 
 data "azapi_resource" "example" {
   name      = "example"
-  parent_id = azurerm_resource_group.example.id
+  parent_id = azapi_resource.resource_group.id
   type      = "Microsoft.ContainerRegistry/registries@2020-11-01-preview"
 
   response_export_values = ["properties.loginServer", "properties.policies.quarantinePolicy.status"]
+
+  depends_on = [azapi_resource.container_registry]
 }
 
 // it will output "registry1.azurecr.io"

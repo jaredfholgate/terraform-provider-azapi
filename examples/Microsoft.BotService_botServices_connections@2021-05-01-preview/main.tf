@@ -3,17 +3,8 @@ terraform {
     azapi = {
       source = "Azure/azapi"
     }
-    azurerm = {
-      source = "hashicorp/azurerm"
-    }
   }
 }
-
-provider "azurerm" {
-  features {
-  }
-}
-
 provider "azapi" {
   skip_provider_registration = false
 }
@@ -34,7 +25,7 @@ variable "client_secret" {
   sensitive   = true
 }
 
-data "azurerm_client_config" "current" {
+data "azapi_client_config" "current" {
 }
 
 resource "azapi_resource" "resourceGroup" {
@@ -54,7 +45,7 @@ resource "azapi_resource" "botService" {
       displayName          = var.resource_name
       isCmekEnabled        = false
       isStreamingSupported = false
-      msaAppId             = data.azurerm_client_config.current.tenant_id
+      msaAppId             = data.azapi_client_config.current.tenant_id
     }
     sku = {
       name = "F0"
@@ -66,7 +57,7 @@ resource "azapi_resource" "botService" {
 
 data "azapi_resource_action" "listAuthServiceProviders" {
   type                   = "Microsoft.BotService@2021-05-01-preview"
-  resource_id            = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.BotService"
+  resource_id            = "/subscriptions/${data.azapi_client_config.current.subscription_id}/providers/Microsoft.BotService"
   action                 = "listAuthServiceProviders"
   response_export_values = ["*"]
 }

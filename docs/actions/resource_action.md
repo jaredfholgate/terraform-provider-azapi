@@ -15,17 +15,10 @@ Perform an action on an existing Azure resource (stateless).
 ```terraform
 terraform {
   required_providers {
-    azurerm = {
-      source = "hashicorp/azurerm"
-    }
     azapi = {
       source = "Azure/azapi"
     }
   }
-}
-
-provider "azurerm" {
-  features {}
 }
 
 provider "azapi" {}
@@ -35,60 +28,98 @@ variable "admin_password" {
   sensitive = true
 }
 
-resource "azurerm_resource_group" "example" {
+resource "azapi_resource" "resource_group" {
+  type     = "Microsoft.Resources/resourceGroups@2020-06-01"
   name     = "example-resources"
   location = "West Europe"
 }
 
-resource "azurerm_virtual_network" "example" {
-  name                = "example-network"
-  address_space       = ["10.0.0.0/16"]
-  location            = azurerm_resource_group.example.location
-  resource_group_name = azurerm_resource_group.example.name
-}
-
-resource "azurerm_subnet" "example" {
-  name                 = "internal"
-  resource_group_name  = azurerm_resource_group.example.name
-  virtual_network_name = azurerm_virtual_network.example.name
-  address_prefixes     = ["10.0.2.0/24"]
-}
-
-resource "azurerm_network_interface" "example" {
-  name                = "example-nic"
-  location            = azurerm_resource_group.example.location
-  resource_group_name = azurerm_resource_group.example.name
-
-  ip_configuration {
-    name                          = "internal"
-    subnet_id                     = azurerm_subnet.example.id
-    private_ip_address_allocation = "Dynamic"
+resource "azapi_resource" "virtual_network" {
+  type      = "Microsoft.Network/virtualNetworks@2023-11-01"
+  name      = "example-network"
+  parent_id = azapi_resource.resource_group.id
+  location  = azapi_resource.resource_group.location
+  body = {
+    properties = {
+      addressSpace = {
+        addressPrefixes = ["10.0.0.0/16"]
+      }
+    }
   }
 }
 
-resource "azurerm_windows_virtual_machine" "example" {
-  name                = "example-vm"
-  resource_group_name = azurerm_resource_group.example.name
-  location            = azurerm_resource_group.example.location
-  size                = "Standard_F2"
-  admin_username      = "adminuser"
-  admin_password      = var.admin_password
-  network_interface_ids = [
-    azurerm_network_interface.example.id,
-  ]
-
-  os_disk {
-    caching              = "ReadWrite"
-    storage_account_type = "Standard_LRS"
+resource "azapi_resource" "subnet" {
+  type      = "Microsoft.Network/virtualNetworks/subnets@2023-11-01"
+  name      = "internal"
+  parent_id = azapi_resource.virtual_network.id
+  body = {
+    properties = {
+      addressPrefix = "10.0.2.0/24"
+    }
   }
+}
 
-  source_image_reference {
-    publisher = "MicrosoftWindowsServer"
-    offer     = "WindowsServer"
-    sku       = "2016-Datacenter"
-    version   = "latest"
+resource "azapi_resource" "network_interface" {
+  type      = "Microsoft.Network/networkInterfaces@2023-11-01"
+  name      = "example-nic"
+  parent_id = azapi_resource.resource_group.id
+  location  = azapi_resource.resource_group.location
+  body = {
+    properties = {
+      ipConfigurations = [
+        {
+          name = "internal"
+          properties = {
+            subnet = {
+              id = azapi_resource.subnet.id
+            }
+            privateIPAllocationMethod = "Dynamic"
+          }
+        }
+      ]
+    }
   }
+}
 
+resource "azapi_resource" "windows_virtual_machine" {
+  type      = "Microsoft.Compute/virtualMachines@2023-03-01"
+  name      = "example-vm"
+  parent_id = azapi_resource.resource_group.id
+  location  = azapi_resource.resource_group.location
+  body = {
+    properties = {
+      hardwareProfile = {
+        vmSize = "Standard_F2"
+      }
+      osProfile = {
+        computerName  = "examplevm"
+        adminUsername = "adminuser"
+        adminPassword = var.admin_password
+      }
+      networkProfile = {
+        networkInterfaces = [
+          {
+            id = azapi_resource.network_interface.id
+          }
+        ]
+      }
+      storageProfile = {
+        imageReference = {
+          publisher = "MicrosoftWindowsServer"
+          offer     = "WindowsServer"
+          sku       = "2016-Datacenter"
+          version   = "latest"
+        }
+        osDisk = {
+          caching      = "ReadWrite"
+          createOption = "FromImage"
+          managedDisk = {
+            storageAccountType = "Standard_LRS"
+          }
+        }
+      }
+    }
+  }
   tags = {
     environment = "production"
   }
@@ -109,7 +140,7 @@ resource "azurerm_windows_virtual_machine" "example" {
 action "azapi_resource_action" "power_off" {
   config {
     type        = "Microsoft.Compute/virtualMachines@2023-03-01"
-    resource_id = azurerm_windows_virtual_machine.example.id
+    resource_id = azapi_resource.windows_virtual_machine.id
     action      = "powerOff"
   }
 }
@@ -117,7 +148,7 @@ action "azapi_resource_action" "power_off" {
 action "azapi_resource_action" "power_on" {
   config {
     type        = "Microsoft.Compute/virtualMachines@2023-03-01"
-    resource_id = azurerm_windows_virtual_machine.example.id
+    resource_id = azapi_resource.windows_virtual_machine.id
     action      = "start"
   }
 }

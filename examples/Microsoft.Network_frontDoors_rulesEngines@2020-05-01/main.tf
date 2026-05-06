@@ -6,11 +6,6 @@ terraform {
   }
 }
 
-provider "azurerm" {
-  features {
-  }
-}
-
 provider "azapi" {
   skip_provider_registration = false
 }
@@ -38,55 +33,102 @@ locals {
   load_balancing_name = "load-balancing-setting"
 }
 
-resource "azurerm_frontdoor" "test" {
-  name                = "acctest-FD-test"
-  resource_group_name = azapi_resource.resourceGroup.name
-
-  backend_pool_settings {
-    enforce_backend_pools_certificate_name_check = false
-  }
-
-  routing_rule {
-    name               = "routing-rule"
-    accepted_protocols = ["Http", "Https"]
-    patterns_to_match  = ["/*"]
-    frontend_endpoints = [local.endpoint_name]
-    forwarding_configuration {
-      forwarding_protocol = "MatchRequest"
-      backend_pool_name   = local.backend_name
+resource "azapi_resource" "frontDoor" {
+  type      = "Microsoft.Network/frontDoors@2020-05-01"
+  parent_id = azapi_resource.resourceGroup.id
+  name      = "acctest-FD-test"
+  location  = "Global"
+  body = {
+    properties = {
+      enabledState = "Enabled"
+      backendPoolsSettings = {
+        enforceCertificateNameCheck = "Disabled"
+      }
+      backendPools = [
+        {
+          name = local.backend_name
+          properties = {
+            backends = [
+              {
+                address           = "www.bing.com"
+                backendHostHeader = "www.bing.com"
+                httpPort          = 80
+                httpsPort         = 443
+                priority          = 1
+                weight            = 50
+                enabledState      = "Enabled"
+              }
+            ]
+            loadBalancingSettings = {
+              id = "${azapi_resource.resourceGroup.id}/providers/Microsoft.Network/frontDoors/acctest-FD-test/loadBalancingSettings/${local.load_balancing_name}"
+            }
+            healthProbeSettings = {
+              id = "${azapi_resource.resourceGroup.id}/providers/Microsoft.Network/frontDoors/acctest-FD-test/healthProbeSettings/${local.health_probe_name}"
+            }
+          }
+        }
+      ]
+      loadBalancingSettings = [
+        {
+          name = local.load_balancing_name
+          properties = {
+            sampleSize                    = 4
+            successfulSamplesRequired     = 2
+            additionalLatencyMilliseconds = 0
+          }
+        }
+      ]
+      healthProbeSettings = [
+        {
+          name = local.health_probe_name
+          properties = {
+            path              = "/"
+            protocol          = "Http"
+            intervalInSeconds = 120
+            healthProbeMethod = "HEAD"
+            enabledState      = "Enabled"
+          }
+        }
+      ]
+      frontendEndpoints = [
+        {
+          name = local.endpoint_name
+          properties = {
+            hostName = "acctest-FD-test.azurefd.net"
+          }
+        }
+      ]
+      routingRules = [
+        {
+          name = "routing-rule"
+          properties = {
+            acceptedProtocols = ["Http", "Https"]
+            patternsToMatch   = ["/*"]
+            enabledState      = "Enabled"
+            frontendEndpoints = [
+              {
+                id = "${azapi_resource.resourceGroup.id}/providers/Microsoft.Network/frontDoors/acctest-FD-test/frontendEndpoints/${local.endpoint_name}"
+              }
+            ]
+            routeConfiguration = {
+              "@odata.type"      = "#Microsoft.Azure.FrontDoor.Models.FrontdoorForwardingConfiguration"
+              forwardingProtocol = "MatchRequest"
+              backendPool = {
+                id = "${azapi_resource.resourceGroup.id}/providers/Microsoft.Network/frontDoors/acctest-FD-test/backendPools/${local.backend_name}"
+              }
+            }
+          }
+        }
+      ]
     }
   }
-
-  backend_pool_load_balancing {
-    name = local.load_balancing_name
-  }
-
-  backend_pool_health_probe {
-    name = local.health_probe_name
-  }
-
-  backend_pool {
-    name = local.backend_name
-    backend {
-      host_header = "www.bing.com"
-      address     = "www.bing.com"
-      http_port   = 80
-      https_port  = 443
-    }
-
-    load_balancing_name = local.load_balancing_name
-    health_probe_name   = local.health_probe_name
-  }
-
-  frontend_endpoint {
-    name      = local.endpoint_name
-    host_name = "acctest-FD-test.azurefd.net"
-  }
+  schema_validation_enabled = false
+  response_export_values    = ["*"]
 }
 
 resource "azapi_resource" "rulesEngine" {
   type      = "Microsoft.Network/frontDoors/rulesEngines@2020-05-01"
-  parent_id = azurerm_frontdoor.test.id
+  parent_id = azapi_resource.frontDoor.id
   name      = var.resource_name
   body = {
     properties = {

@@ -115,7 +115,7 @@ resource "azapi_resource" "tagDescription" {
     properties = {
       description             = "tag description"
       externalDocsDescription = "external tag description"
-      externalDocsUrl         = "https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs"
+      externalDocsUrl         = "https://registry.terraform.io/providers/Azure/azapi/latest/docs"
     }
   }
 }

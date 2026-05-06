@@ -21,17 +21,8 @@ terraform {
     azapi = {
       source = "Azure/azapi"
     }
-    azurerm = {
-      source = "hashicorp/azurerm"
-    }
   }
 }
-
-provider "azurerm" {
-  features {
-  }
-}
-
 provider "azapi" {
   skip_provider_registration = false
 }
@@ -62,7 +53,7 @@ variable "admin_login" {
   description = "The administrator login name for the PostgreSQL server admin"
 }
 
-data "azurerm_client_config" "current" {
+data "azapi_client_config" "current" {
 }
 
 resource "azapi_resource" "resourceGroup" {
@@ -111,8 +102,8 @@ resource "azapi_resource" "administrator" {
     properties = {
       administratorType = "ActiveDirectory"
       login             = var.admin_login
-      sid               = data.azurerm_client_config.current.client_id
-      tenantId          = data.azurerm_client_config.current.tenant_id
+      sid               = data.azapi_client_config.current.client_id
+      tenantId          = data.azapi_client_config.current.tenant_id
     }
   }
   schema_validation_enabled = false

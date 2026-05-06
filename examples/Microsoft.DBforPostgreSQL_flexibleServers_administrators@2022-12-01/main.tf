@@ -3,17 +3,8 @@ terraform {
     azapi = {
       source = "Azure/azapi"
     }
-    azurerm = {
-      source = "hashicorp/azurerm"
-    }
   }
 }
-
-provider "azurerm" {
-  features {
-  }
-}
-
 provider "azapi" {
   skip_provider_registration = false
 }
@@ -39,7 +30,7 @@ variable "administrator_login_password" {
   sensitive   = true
 }
 
-data "azurerm_client_config" "current" {
+data "azapi_client_config" "current" {
 }
 
 resource "azapi_resource" "resourceGroup" {
@@ -60,7 +51,7 @@ resource "azapi_resource" "flexibleServer" {
       authConfig = {
         activeDirectoryAuth = "Enabled"
         passwordAuth        = "Enabled"
-        tenantId            = data.azurerm_client_config.current.tenant_id
+        tenantId            = data.azapi_client_config.current.tenant_id
       }
       availabilityZone = "2"
       backup = {
@@ -88,11 +79,11 @@ resource "azapi_resource" "flexibleServer" {
 resource "azapi_resource" "administrator" {
   type      = "Microsoft.DBforPostgreSQL/flexibleServers/administrators@2022-12-01"
   parent_id = azapi_resource.flexibleServer.id
-  name      = data.azurerm_client_config.current.object_id
+  name      = data.azapi_client_config.current.object_id
   body = {
     properties = {
       principalType = "ServicePrincipal"
-      tenantId      = data.azurerm_client_config.current.tenant_id
+      tenantId      = data.azapi_client_config.current.tenant_id
     }
   }
   schema_validation_enabled = false

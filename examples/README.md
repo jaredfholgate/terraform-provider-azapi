@@ -97,18 +97,15 @@ If you have an example that you would like to contribute, please follow the guid
     6. Dependencies: If the resource has dependencies on other resources, you should create the dependent resources in the same `main.tf` file and use `azapi` resources to represent the dependent resources. You could find examples of how to create dependent resources in the existing examples.
         1. `subscription_id`: `azapi_client_config` data source is used to get the subscription ID, for example, `subscription_id = data.azapi_client_config.current.subscription_id`.
 
-    5. Other providers: If other providers are required to create the resource, you should add the required providers block in the `main.tf` file. For example, if the resource requires the `azurerm` provider, you should add the following block to the `main.tf` file:
+    5. Other providers: If other providers are required to create the resource, you should add the required providers block in the `main.tf` file. For example:
 
     ```hcl
     terraform {
         required_providers {
                 azapi = {
-                    source = "Azure/azapi"  
+                    source = "Azure/azapi"
                 }
-                azurerm = {
-                    source = "hashicorp/azurerm"
-                    version = "=4.20.0"
-                }
+                # add any additional providers here
         }
     }
     ```

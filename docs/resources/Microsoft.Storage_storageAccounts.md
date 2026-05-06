@@ -97,24 +97,11 @@ terraform {
     azapi = {
       source = "Azure/azapi"
     }
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "=4.20.0"
-    }
   }
-}
-
-
-provider "azurerm" {
-  features {
-    resource_group {
-      prevent_deletion_if_contains_resources = false
-    }
-  }
-  subscription_id = var.subscription_id
 }
 
 provider "azapi" {
+  subscription_id            = var.subscription_id
   skip_provider_registration = false
 }
 
@@ -144,142 +131,266 @@ variable "vm_admin_password" {
   sensitive   = true
 }
 
-resource "azurerm_resource_group" "example" {
+data "azapi_client_config" "current" {}
+
+resource "azapi_resource" "resourceGroup" {
+  type     = "Microsoft.Resources/resourceGroups@2020-06-01"
   name     = var.resource_name
   location = var.location
 }
 
-resource "azurerm_virtual_network" "example" {
-  name                = "${var.resource_name}-vnet"
-  resource_group_name = azurerm_resource_group.example.name
-  location            = azurerm_resource_group.example.location
-  address_space       = ["10.0.0.0/16"]
-}
-
-resource "azurerm_subnet" "main" {
-  name                 = "main"
-  resource_group_name  = azurerm_resource_group.example.name
-  virtual_network_name = azurerm_virtual_network.example.name
-  address_prefixes     = ["10.0.1.0/24"]
-}
-
-resource "azurerm_subnet" "vm" {
-  name                 = "vm"
-  resource_group_name  = azurerm_resource_group.example.name
-  virtual_network_name = azurerm_virtual_network.example.name
-  address_prefixes     = ["10.0.2.0/24"]
-}
-
-resource "azurerm_subnet" "bastion" {
-  name                 = "AzureBastionSubnet"
-  resource_group_name  = azurerm_resource_group.example.name
-  virtual_network_name = azurerm_virtual_network.example.name
-  address_prefixes     = ["10.0.3.0/24"]
-}
-
-resource "azurerm_private_dns_zone" "blob" {
-  name                = "privatelink.blob.core.windows.net"
-  resource_group_name = azurerm_resource_group.example.name
-}
-
-resource "azurerm_private_dns_zone" "queue" {
-  name                = "privatelink.queue.core.windows.net"
-  resource_group_name = azurerm_resource_group.example.name
-}
-
-resource "azurerm_private_dns_zone" "web" {
-  name                = "privatelink.web.core.windows.net"
-  resource_group_name = azurerm_resource_group.example.name
-}
-
-resource "azurerm_private_dns_zone_virtual_network_link" "web" {
-  name                  = "web"
-  resource_group_name   = azurerm_resource_group.example.name
-  private_dns_zone_name = azurerm_private_dns_zone.web.name
-  virtual_network_id    = azurerm_virtual_network.example.id
-}
-
-resource "azurerm_private_dns_zone_virtual_network_link" "blob" {
-  name                  = "blob"
-  resource_group_name   = azurerm_resource_group.example.name
-  private_dns_zone_name = azurerm_private_dns_zone.blob.name
-  virtual_network_id    = azurerm_virtual_network.example.id
-}
-
-resource "azurerm_private_dns_zone_virtual_network_link" "queue" {
-  name                  = "queue"
-  resource_group_name   = azurerm_resource_group.example.name
-  private_dns_zone_name = azurerm_private_dns_zone.queue.name
-  virtual_network_id    = azurerm_virtual_network.example.id
-}
-
-resource "azurerm_public_ip" "example" {
-  name                = "${var.resource_name}-ip"
-  location            = azurerm_resource_group.example.location
-  resource_group_name = azurerm_resource_group.example.name
-  allocation_method   = "Static"
-  sku                 = "Standard"
-}
-
-resource "azurerm_bastion_host" "example" {
-  name                = "${var.resource_name}-bastion"
-  location            = azurerm_resource_group.example.location
-  resource_group_name = azurerm_resource_group.example.name
-  sku                 = "Basic"
-
-  ip_configuration {
-    name                 = "configuration"
-    subnet_id            = azurerm_subnet.bastion.id
-    public_ip_address_id = azurerm_public_ip.example.id
+resource "azapi_resource" "virtualNetwork" {
+  type      = "Microsoft.Network/virtualNetworks@2023-11-01"
+  parent_id = azapi_resource.resourceGroup.id
+  name      = "${var.resource_name}-vnet"
+  location  = var.location
+  body = {
+    properties = {
+      addressSpace = {
+        addressPrefixes = ["10.0.0.0/16"]
+      }
+    }
+  }
+  schema_validation_enabled = false
+  lifecycle {
+    ignore_changes = [body.properties.subnets]
   }
 }
 
-resource "azurerm_network_interface" "example" {
-  name                = "${var.resource_name}-nic"
-  location            = azurerm_resource_group.example.location
-  resource_group_name = azurerm_resource_group.example.name
+resource "azapi_resource" "subnetMain" {
+  type      = "Microsoft.Network/virtualNetworks/subnets@2023-11-01"
+  parent_id = azapi_resource.virtualNetwork.id
+  name      = "main"
+  body = {
+    properties = {
+      addressPrefix = "10.0.1.0/24"
+    }
+  }
+  schema_validation_enabled = false
+}
 
-  ip_configuration {
-    name                          = "internal"
-    subnet_id                     = azurerm_subnet.vm.id
-    private_ip_address_allocation = "Dynamic"
+resource "azapi_resource" "subnetVm" {
+  type      = "Microsoft.Network/virtualNetworks/subnets@2023-11-01"
+  parent_id = azapi_resource.virtualNetwork.id
+  name      = "vm"
+  body = {
+    properties = {
+      addressPrefix = "10.0.2.0/24"
+    }
+  }
+  schema_validation_enabled = false
+}
+
+resource "azapi_resource" "subnetBastion" {
+  type      = "Microsoft.Network/virtualNetworks/subnets@2023-11-01"
+  parent_id = azapi_resource.virtualNetwork.id
+  name      = "AzureBastionSubnet"
+  body = {
+    properties = {
+      addressPrefix = "10.0.3.0/24"
+    }
+  }
+  schema_validation_enabled = false
+}
+
+resource "azapi_resource" "privateDnsZoneBlob" {
+  type      = "Microsoft.Network/privateDnsZones@2020-06-01"
+  parent_id = azapi_resource.resourceGroup.id
+  name      = "privatelink.blob.core.windows.net"
+  location  = "global"
+  body = {
+    properties = {}
   }
 }
 
-resource "azurerm_windows_virtual_machine" "example" {
-  name                              = var.resource_name
-  resource_group_name               = azurerm_resource_group.example.name
-  location                          = azurerm_resource_group.example.location
-  size                              = "Standard_F2"
-  admin_username                    = var.vm_admin_username
-  admin_password                    = var.vm_admin_password
-  vm_agent_platform_updates_enabled = true
-  network_interface_ids = [
-    azurerm_network_interface.example.id,
-  ]
-
-  os_disk {
-    caching              = "ReadWrite"
-    storage_account_type = "Standard_LRS"
+resource "azapi_resource" "privateDnsZoneQueue" {
+  type      = "Microsoft.Network/privateDnsZones@2020-06-01"
+  parent_id = azapi_resource.resourceGroup.id
+  name      = "privatelink.queue.core.windows.net"
+  location  = "global"
+  body = {
+    properties = {}
   }
+}
 
-  source_image_reference {
-    publisher = "MicrosoftWindowsServer"
-    offer     = "WindowsServer"
-    sku       = "2022-Datacenter"
-    version   = "latest"
+resource "azapi_resource" "privateDnsZoneWeb" {
+  type      = "Microsoft.Network/privateDnsZones@2020-06-01"
+  parent_id = azapi_resource.resourceGroup.id
+  name      = "privatelink.web.core.windows.net"
+  location  = "global"
+  body = {
+    properties = {}
   }
+}
 
+resource "azapi_resource" "privateDnsZoneVnetLinkBlob" {
+  type      = "Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01"
+  parent_id = azapi_resource.privateDnsZoneBlob.id
+  name      = "blob"
+  location  = "global"
+  body = {
+    properties = {
+      registrationEnabled = false
+      virtualNetwork = {
+        id = azapi_resource.virtualNetwork.id
+      }
+    }
+  }
+}
+
+resource "azapi_resource" "privateDnsZoneVnetLinkQueue" {
+  type      = "Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01"
+  parent_id = azapi_resource.privateDnsZoneQueue.id
+  name      = "queue"
+  location  = "global"
+  body = {
+    properties = {
+      registrationEnabled = false
+      virtualNetwork = {
+        id = azapi_resource.virtualNetwork.id
+      }
+    }
+  }
+}
+
+resource "azapi_resource" "privateDnsZoneVnetLinkWeb" {
+  type      = "Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01"
+  parent_id = azapi_resource.privateDnsZoneWeb.id
+  name      = "web"
+  location  = "global"
+  body = {
+    properties = {
+      registrationEnabled = false
+      virtualNetwork = {
+        id = azapi_resource.virtualNetwork.id
+      }
+    }
+  }
+}
+
+resource "azapi_resource" "publicIp" {
+  type      = "Microsoft.Network/publicIPAddresses@2023-11-01"
+  parent_id = azapi_resource.resourceGroup.id
+  name      = "${var.resource_name}-ip"
+  location  = var.location
+  body = {
+    sku = {
+      name = "Standard"
+    }
+    properties = {
+      publicIPAllocationMethod = "Static"
+    }
+  }
+}
+
+resource "azapi_resource" "bastionHost" {
+  type      = "Microsoft.Network/bastionHosts@2023-11-01"
+  parent_id = azapi_resource.resourceGroup.id
+  name      = "${var.resource_name}-bastion"
+  location  = var.location
+  body = {
+    sku = {
+      name = "Basic"
+    }
+    properties = {
+      ipConfigurations = [
+        {
+          name = "configuration"
+          properties = {
+            subnet = {
+              id = azapi_resource.subnetBastion.id
+            }
+            publicIPAddress = {
+              id = azapi_resource.publicIp.id
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
+resource "azapi_resource" "networkInterface" {
+  type      = "Microsoft.Network/networkInterfaces@2023-11-01"
+  parent_id = azapi_resource.resourceGroup.id
+  name      = "${var.resource_name}-nic"
+  location  = var.location
+  body = {
+    properties = {
+      ipConfigurations = [
+        {
+          name = "internal"
+          properties = {
+            subnet = {
+              id = azapi_resource.subnetVm.id
+            }
+            privateIPAllocationMethod = "Dynamic"
+          }
+        }
+      ]
+    }
+  }
+  response_export_values = ["identity.principalId"]
+}
+
+resource "azapi_resource" "windowsVirtualMachine" {
+  type      = "Microsoft.Compute/virtualMachines@2023-03-01"
+  parent_id = azapi_resource.resourceGroup.id
+  name      = var.resource_name
+  location  = var.location
   identity {
     type = "SystemAssigned"
   }
+  body = {
+    properties = {
+      hardwareProfile = {
+        vmSize = "Standard_F2"
+      }
+      osProfile = {
+        computerName  = var.resource_name
+        adminUsername = var.vm_admin_username
+        adminPassword = var.vm_admin_password
+        windowsConfiguration = {
+          provisionVMAgent             = true
+          enableVMAgentPlatformUpdates = true
+        }
+      }
+      networkProfile = {
+        networkInterfaces = [
+          {
+            id = azapi_resource.networkInterface.id
+            properties = {
+              primary = true
+            }
+          }
+        ]
+      }
+      storageProfile = {
+        imageReference = {
+          publisher = "MicrosoftWindowsServer"
+          offer     = "WindowsServer"
+          sku       = "2022-Datacenter"
+          version   = "latest"
+        }
+        osDisk = {
+          createOption = "FromImage"
+          caching      = "ReadWrite"
+          managedDisk = {
+            storageAccountType = "Standard_LRS"
+          }
+        }
+      }
+    }
+  }
+  schema_validation_enabled = false
+  response_export_values    = ["identity.principalId"]
 }
 
 resource "azapi_resource" "storageAccount" {
   type      = "Microsoft.Storage/storageAccounts@2023-05-01"
-  parent_id = azurerm_resource_group.example.id
+  parent_id = azapi_resource.resourceGroup.id
   name      = "${var.resource_name}sa"
-  location  = azurerm_resource_group.example.location
+  location  = var.location
   body = {
     kind = "StorageV2"
     properties = {
@@ -323,69 +434,144 @@ resource "azapi_resource" "storageAccount" {
   }
 }
 
-resource "azurerm_role_assignment" "example" {
-  scope                = azapi_resource.storageAccount.id
-  role_definition_name = "Contributor"
-  principal_id         = azurerm_windows_virtual_machine.example.identity[0].principal_id
-}
-
-resource "azurerm_private_endpoint" "blob" {
-  name                = "${var.resource_name}-private-endpoint-blob"
-  location            = azurerm_resource_group.example.location
-  resource_group_name = azurerm_resource_group.example.name
-  subnet_id           = azurerm_subnet.main.id
-
-  private_service_connection {
-    name                           = "${var.resource_name}-private-endpoint-connection"
-    private_connection_resource_id = azapi_resource.storageAccount.id
-    subresource_names              = ["blob"]
-    is_manual_connection           = false
-  }
-
-  private_dns_zone_group {
-    name                 = "storage-private-endpoint-dns-zone-group"
-    private_dns_zone_ids = [azurerm_private_dns_zone.blob.id]
+resource "azapi_resource" "roleAssignment" {
+  type      = "Microsoft.Authorization/roleAssignments@2022-04-01"
+  parent_id = azapi_resource.storageAccount.id
+  name      = uuidv5("url", "${azapi_resource.storageAccount.id}/roleAssignments/${azapi_resource.windowsVirtualMachine.output.identity.principalId}")
+  body = {
+    properties = {
+      principalId      = azapi_resource.windowsVirtualMachine.output.identity.principalId
+      principalType    = "ServicePrincipal"
+      roleDefinitionId = "/subscriptions/${data.azapi_client_config.current.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
+    }
   }
 }
 
-resource "azurerm_private_endpoint" "queue" {
-  name                = "${var.resource_name}-private-endpoint-queue"
-  location            = azurerm_resource_group.example.location
-  resource_group_name = azurerm_resource_group.example.name
-  subnet_id           = azurerm_subnet.main.id
-
-  private_service_connection {
-    name                           = "${var.resource_name}-private-endpoint-connection-q"
-    private_connection_resource_id = azapi_resource.storageAccount.id
-    subresource_names              = ["queue"]
-    is_manual_connection           = false
+resource "azapi_resource" "privateEndpointBlob" {
+  type      = "Microsoft.Network/privateEndpoints@2023-11-01"
+  parent_id = azapi_resource.resourceGroup.id
+  name      = "${var.resource_name}-private-endpoint-blob"
+  location  = var.location
+  body = {
+    properties = {
+      subnet = {
+        id = azapi_resource.subnetMain.id
+      }
+      privateLinkServiceConnections = [
+        {
+          name = "${var.resource_name}-private-endpoint-connection"
+          properties = {
+            privateLinkServiceId = azapi_resource.storageAccount.id
+            groupIds             = ["blob"]
+          }
+        }
+      ]
+    }
   }
+  schema_validation_enabled = false
+}
 
-  private_dns_zone_group {
-    name                 = "storage-private-endpoint-dns-zone-group-q"
-    private_dns_zone_ids = [azurerm_private_dns_zone.queue.id]
+resource "azapi_resource" "privateEndpointBlobDnsZoneGroup" {
+  type      = "Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-11-01"
+  parent_id = azapi_resource.privateEndpointBlob.id
+  name      = "storage-private-endpoint-dns-zone-group"
+  body = {
+    properties = {
+      privateDnsZoneConfigs = [
+        {
+          name = "privatelink-blob-core-windows-net"
+          properties = {
+            privateDnsZoneId = azapi_resource.privateDnsZoneBlob.id
+          }
+        }
+      ]
+    }
   }
 }
 
-resource "azurerm_private_endpoint" "web" {
-  name                = "${var.resource_name}-private-endpoint-web"
-  location            = azurerm_resource_group.example.location
-  resource_group_name = azurerm_resource_group.example.name
-  subnet_id           = azurerm_subnet.main.id
-
-  private_service_connection {
-    name                           = "${var.resource_name}-private-endpoint-connection-web"
-    private_connection_resource_id = azapi_resource.storageAccount.id
-    subresource_names              = ["web"]
-    is_manual_connection           = false
+resource "azapi_resource" "privateEndpointQueue" {
+  type      = "Microsoft.Network/privateEndpoints@2023-11-01"
+  parent_id = azapi_resource.resourceGroup.id
+  name      = "${var.resource_name}-private-endpoint-queue"
+  location  = var.location
+  body = {
+    properties = {
+      subnet = {
+        id = azapi_resource.subnetMain.id
+      }
+      privateLinkServiceConnections = [
+        {
+          name = "${var.resource_name}-private-endpoint-connection-q"
+          properties = {
+            privateLinkServiceId = azapi_resource.storageAccount.id
+            groupIds             = ["queue"]
+          }
+        }
+      ]
+    }
   }
+  schema_validation_enabled = false
+}
 
-  private_dns_zone_group {
-    name                 = "storage-private-endpoint-dns-zone-group-web"
-    private_dns_zone_ids = [azurerm_private_dns_zone.web.id]
+resource "azapi_resource" "privateEndpointQueueDnsZoneGroup" {
+  type      = "Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-11-01"
+  parent_id = azapi_resource.privateEndpointQueue.id
+  name      = "storage-private-endpoint-dns-zone-group-q"
+  body = {
+    properties = {
+      privateDnsZoneConfigs = [
+        {
+          name = "privatelink-queue-core-windows-net"
+          properties = {
+            privateDnsZoneId = azapi_resource.privateDnsZoneQueue.id
+          }
+        }
+      ]
+    }
   }
 }
 
+resource "azapi_resource" "privateEndpointWeb" {
+  type      = "Microsoft.Network/privateEndpoints@2023-11-01"
+  parent_id = azapi_resource.resourceGroup.id
+  name      = "${var.resource_name}-private-endpoint-web"
+  location  = var.location
+  body = {
+    properties = {
+      subnet = {
+        id = azapi_resource.subnetMain.id
+      }
+      privateLinkServiceConnections = [
+        {
+          name = "${var.resource_name}-private-endpoint-connection-web"
+          properties = {
+            privateLinkServiceId = azapi_resource.storageAccount.id
+            groupIds             = ["web"]
+          }
+        }
+      ]
+    }
+  }
+  schema_validation_enabled = false
+}
+
+resource "azapi_resource" "privateEndpointWebDnsZoneGroup" {
+  type      = "Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-11-01"
+  parent_id = azapi_resource.privateEndpointWeb.id
+  name      = "storage-private-endpoint-dns-zone-group-web"
+  body = {
+    properties = {
+      privateDnsZoneConfigs = [
+        {
+          name = "privatelink-web-core-windows-net"
+          properties = {
+            privateDnsZoneId = azapi_resource.privateDnsZoneWeb.id
+          }
+        }
+      ]
+    }
+  }
+}
 
 ```
 

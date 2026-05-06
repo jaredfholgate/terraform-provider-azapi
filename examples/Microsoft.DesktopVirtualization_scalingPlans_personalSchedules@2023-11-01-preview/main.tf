@@ -10,11 +10,6 @@ provider "azapi" {
   skip_provider_registration = false
 }
 
-provider "azurerm" {
-  features {
-  }
-}
-
 variable "resource_name" {
   type    = string
   default = "acctest0001"
@@ -35,12 +30,19 @@ data "azuread_service_principal" "test" {
   display_name = "Windows Virtual Desktop"
 }
 
-resource "azurerm_role_assignment" "test" {
-  name                             = "4a23d649-5bf7-41b8-9701-c17f811f68da"
-  scope                            = azapi_resource.resourceGroup.id
-  role_definition_name             = "Desktop Virtualization Power On Off Contributor"
-  principal_id                     = data.azuread_service_principal.test.object_id
-  skip_service_principal_aad_check = true
+data "azapi_client_config" "current" {}
+
+resource "azapi_resource" "test" {
+  type      = "Microsoft.Authorization/roleAssignments@2022-04-01"
+  name      = "4a23d649-5bf7-41b8-9701-c17f811f68da"
+  parent_id = azapi_resource.resourceGroup.id
+  body = {
+    properties = {
+      principalId      = data.azuread_service_principal.test.object_id
+      principalType    = "ServicePrincipal"
+      roleDefinitionId = "/subscriptions/${data.azapi_client_config.current.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/40c5ff49-9181-41f8-ae61-143b0e78555e"
+    }
+  }
 }
 
 resource "azapi_resource" "hostPool" {
@@ -64,7 +66,7 @@ resource "azapi_resource" "hostPool" {
 }
 
 resource "azapi_resource" "scalingPlan" {
-  depends_on = [azurerm_role_assignment.test]
+  depends_on = [azapi_resource.test]
   type       = "Microsoft.DesktopVirtualization/scalingPlans@2023-11-01-preview"
   name       = var.resource_name
   location   = var.location

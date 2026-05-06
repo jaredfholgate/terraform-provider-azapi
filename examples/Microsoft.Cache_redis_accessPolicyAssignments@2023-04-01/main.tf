@@ -5,16 +5,11 @@ terraform {
     }
   }
 }
-
-provider "azurerm" {
-  features {}
-}
-
 provider "azapi" {
   skip_provider_registration = false
 }
 
-data "azurerm_client_config" "test" {
+data "azapi_client_config" "test" {
 }
 
 variable "resource_name" {
@@ -60,7 +55,7 @@ resource "azapi_resource" "accessPolicyAssignment" {
   body = {
     properties = {
       accessPolicyName = "Data Contributor"
-      objectId         = data.azurerm_client_config.test.object_id
+      objectId         = data.azapi_client_config.test.object_id
       objectIdAlias    = "ServicePrincipal"
     }
   }

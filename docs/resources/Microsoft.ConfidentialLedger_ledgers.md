@@ -21,17 +21,8 @@ terraform {
     azapi = {
       source = "Azure/azapi"
     }
-    azurerm = {
-      source = "hashicorp/azurerm"
-    }
   }
 }
-
-provider "azurerm" {
-  features {
-  }
-}
-
 provider "azapi" {
   skip_provider_registration = false
 }
@@ -52,7 +43,7 @@ variable "ledger_certificate" {
   sensitive   = true
 }
 
-data "azurerm_client_config" "current" {
+data "azapi_client_config" "current" {
 }
 
 resource "azapi_resource" "resourceGroup" {
@@ -71,8 +62,8 @@ resource "azapi_resource" "ledger" {
       aadBasedSecurityPrincipals = [
         {
           ledgerRoleName = "Administrator"
-          principalId    = data.azurerm_client_config.current.object_id
-          tenantId       = data.azurerm_client_config.current.tenant_id
+          principalId    = data.azapi_client_config.current.object_id
+          tenantId       = data.azapi_client_config.current.tenant_id
         },
       ]
       certBasedSecurityPrincipals = [

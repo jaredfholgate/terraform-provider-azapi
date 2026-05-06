@@ -21,17 +21,8 @@ terraform {
     azapi = {
       source = "Azure/azapi"
     }
-    azurerm = {
-      source = "hashicorp/azurerm"
-    }
   }
 }
-
-provider "azurerm" {
-  features {
-  }
-}
-
 provider "azapi" {
   skip_provider_registration = false
 }
@@ -46,7 +37,7 @@ variable "location" {
   default = "westeurope"
 }
 
-data "azurerm_client_config" "current" {
+data "azapi_client_config" "current" {
 }
 
 resource "azapi_resource" "resourceGroup" {
@@ -99,7 +90,7 @@ resource "azapi_resource" "storageAccount" {
 
 resource "azapi_resource" "logProfile" {
   type      = "Microsoft.Insights/logProfiles@2016-03-01"
-  parent_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}"
+  parent_id = "/subscriptions/${data.azapi_client_config.current.subscription_id}"
   name      = var.resource_name
   location  = ""
   body = {

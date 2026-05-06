@@ -3,17 +3,8 @@ terraform {
     azapi = {
       source = "Azure/azapi"
     }
-    azurerm = {
-      source = "hashicorp/azurerm"
-    }
   }
 }
-
-provider "azurerm" {
-  features {
-  }
-}
-
 provider "azapi" {
   skip_provider_registration = false
 }
@@ -28,7 +19,7 @@ variable "location" {
   default = "westeurope"
 }
 
-data "azurerm_client_config" "current" {
+data "azapi_client_config" "current" {
 }
 
 resource "azapi_resource" "resourceGroup" {
@@ -65,11 +56,11 @@ resource "azapi_resource" "workspace" {
 
 resource "azapi_resource" "workspaceSetting" {
   type      = "Microsoft.Security/workspaceSettings@2017-08-01-preview"
-  parent_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}"
+  parent_id = "/subscriptions/${data.azapi_client_config.current.subscription_id}"
   name      = "default"
   body = {
     properties = {
-      scope       = "/subscriptions/${data.azurerm_client_config.current.subscription_id}"
+      scope       = "/subscriptions/${data.azapi_client_config.current.subscription_id}"
       workspaceId = azapi_resource.workspace.id
     }
   }

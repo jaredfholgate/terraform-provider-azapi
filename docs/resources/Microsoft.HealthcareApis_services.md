@@ -21,17 +21,8 @@ terraform {
     azapi = {
       source = "Azure/azapi"
     }
-    azurerm = {
-      source = "hashicorp/azurerm"
-    }
   }
 }
-
-provider "azurerm" {
-  features {
-  }
-}
-
 provider "azapi" {
   skip_provider_registration = false
 }
@@ -46,7 +37,7 @@ variable "location" {
   default = "westus2"
 }
 
-data "azurerm_client_config" "current" {
+data "azapi_client_config" "current" {
 }
 
 resource "azapi_resource" "resourceGroup" {
@@ -65,7 +56,7 @@ resource "azapi_resource" "service" {
     properties = {
       accessPolicies = [
         {
-          objectId = data.azurerm_client_config.current.object_id
+          objectId = data.azapi_client_config.current.object_id
         },
       ]
       authenticationConfiguration = {

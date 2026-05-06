@@ -3,17 +3,8 @@ terraform {
     azapi = {
       source = "Azure/azapi"
     }
-    azurerm = {
-      source = "hashicorp/azurerm"
-    }
   }
 }
-
-provider "azurerm" {
-  features {
-  }
-}
-
 provider "azapi" {
   skip_provider_registration = false
 }
@@ -28,7 +19,7 @@ variable "location" {
   default = "westeurope"
 }
 
-data "azurerm_client_config" "current" {
+data "azapi_client_config" "current" {
 }
 
 data "azapi_resource_action" "roleDefinitions" {
@@ -54,7 +45,7 @@ resource "azapi_resource" "applicationDefinition" {
     properties = {
       authorizations = [
         {
-          principalId      = data.azurerm_client_config.current.object_id
+          principalId      = data.azapi_client_config.current.object_id
           roleDefinitionId = data.azapi_resource_action.roleDefinitions.output.value[0].name
         },
       ]

@@ -3,17 +3,8 @@ terraform {
     azapi = {
       source = "Azure/azapi"
     }
-    azurerm = {
-      source = "hashicorp/azurerm"
-    }
   }
 }
-
-provider "azurerm" {
-  features {
-  }
-}
-
 provider "azapi" {
   skip_provider_registration = false
 }
@@ -28,7 +19,7 @@ variable "location" {
   default = "westeurope"
 }
 
-data "azurerm_client_config" "current" {
+data "azapi_client_config" "current" {
 }
 
 resource "azapi_resource" "resourceGroup" {
@@ -130,7 +121,7 @@ resource "azapi_resource" "vault" {
             ]
             storage = []
           }
-          tenantId = data.azurerm_client_config.current.tenant_id
+          tenantId = data.azapi_client_config.current.tenant_id
         }
       ]
       createMode                   = "default"
@@ -145,7 +136,7 @@ resource "azapi_resource" "vault" {
         family = "A"
         name   = "standard"
       }
-      tenantId = data.azurerm_client_config.current.tenant_id
+      tenantId = data.azapi_client_config.current.tenant_id
     }
   }
   schema_validation_enabled = false

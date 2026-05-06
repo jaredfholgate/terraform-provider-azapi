@@ -467,31 +467,35 @@ terraform {
 provider "azapi" {
 }
 
-provider "azurerm" {
-  features {}
-}
-
 variable "enabled" {
   type        = bool
   default     = false
   description = "whether start the spring service"
 }
 
-resource "azurerm_resource_group" "example" {
+resource "azapi_resource" "resource_group" {
+  type     = "Microsoft.Resources/resourceGroups@2020-06-01"
   name     = "example-rg"
   location = "west europe"
 }
 
-resource "azurerm_spring_cloud_service" "test" {
-  name                = "example-spring"
-  resource_group_name = azurerm_resource_group.test.name
-  location            = azurerm_resource_group.test.location
-  sku_name            = "S0"
+resource "azapi_resource" "spring_cloud_service" {
+  type      = "Microsoft.AppPlatform/Spring@2022-05-01-preview"
+  name      = "example-spring"
+  parent_id = azapi_resource.resource_group.id
+  location  = azapi_resource.resource_group.location
+  body = {
+    sku = {
+      name = "S0"
+      tier = "Standard"
+    }
+    properties = {}
+  }
 }
 
 resource "azapi_resource_action" "start" {
   type                   = "Microsoft.AppPlatform/Spring@2022-05-01-preview"
-  resource_id            = azurerm_spring_cloud_service.test.id
+  resource_id            = azapi_resource.spring_cloud_service.id
   action                 = "start"
   response_export_values = ["*"]
 
@@ -500,7 +504,7 @@ resource "azapi_resource_action" "start" {
 
 resource "azapi_resource_action" "stop" {
   type                   = "Microsoft.AppPlatform/Spring@2022-05-01-preview"
-  resource_id            = azurerm_spring_cloud_service.test.id
+  resource_id            = azapi_resource.spring_cloud_service.id
   action                 = "stop"
   response_export_values = ["*"]
 

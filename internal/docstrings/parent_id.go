@@ -3,8 +3,8 @@ package docstrings
 const (
 	parentIDStr = `The ID of the azure resource in which this resource is created. It supports different kinds of deployment scope for **top level** resources:
 
-	- resource group scope: %sparent_id%s should be the ID of a resource group, it's recommended to manage a resource group by azurerm_resource_group.
-	- management group scope: %sparent_id%s should be the ID of a management group, it's recommended to manage a management group by azurerm_management_group.
+	- resource group scope: %sparent_id%s should be the ID of a resource group.
+	- management group scope: %sparent_id%s should be the ID of a management group.
 	- extension scope: %sparent_id%s should be the ID of the resource you're adding the extension to.
 	- subscription scope: %sparent_id%s should be like \x60/subscriptions/00000000-0000-0000-0000-000000000000\x60
 	- tenant scope: %sparent_id%s should be /
